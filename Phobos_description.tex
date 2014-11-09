@@ -1,0 +1,120 @@
+\documentclass[12pt]{article} 
+\usepackage[xetex, a4paper, left=2cm, right=2cm, top=2cm,bottom=2cm]{geometry}
+\usepackage[cm-default]{fontspec}
+\usepackage{xunicode}
+
+%\tolerance=1000
+%\emergencystretch=0.74cm 
+
+\usepackage{polyglossia}
+\setdefaultlanguage[spelling=modern]{russian}
+\setotherlanguage{english} 
+\defaultfontfeatures{Scale=MatchLowercase,Ligatures=TeX}  %% устанавливает поведение шрифтов по умолчанию  
+\newfontfamily\cyrillicfont{XITS} 
+\setromanfont[Mapping=tex-text]{XITS}
+\setsansfont[Mapping=tex-text]{XITS}
+\setmonofont{XITS}
+%\newfontfamily\cyrillicfont{Liberation Mono} 
+
+%\usepackage{makecell}
+
+%\usepackage{titlesec}
+%\newcommand{\sectionbreak}{\clearpage}
+
+%\renewcommand{\thesection}{\Alph{section}}
+%\newcount\wd    \wd=\textwidth \multiply\wd by 8 \divide\wd by 17
+
+\usepackage[unicode, pdfborder={0 0 0 0}]{hyperref}
+
+\usepackage{minted}
+\usemintedstyle{friendly}
+
+\author{Andrei Pazniak}
+\title{Описание библиотеки времени исполнения Phobos}
+
+%желательно добавить примеров к каждому описанию
+\begin{document}
+\hypersetup{
+pdftitle = {Phobos description},
+pdfauthor = {Andrei Pazniak},
+pdfsubject = {Описание библиотеки времени исполнения Phobos}
+}% End of hypersetup
+
+\section{std.algorithm}
+Многие функции, описанные в модуле, параметризованны предикатом\footnote{в качестве предиката можно указать имя функции, 
+имя делегата, имя функтора или строку с программой на D, которая может быть скомпилирована}. Предикат может содержать любые 
+допустимые выражения языка D, которые используют символ 'a' (для унарных функций) или символы 'a' и 'b' 
+(для бинарных функций). Гарантируется, что эти имена не вызовут конфликта с такими же именами в пользовательском коде, 
+так как обрабатываются в другом контексте.
+\begin{description}
+\item [all] \hfill \\
+\begin{minted}{d}
+template all(alias pred = "a")
+bool all(Range)(Range range) 
+        if (isInputRange!Range && is(typeof(unaryFun!pred(range.front))));
+\end{minted}
+
+Проверяет, все ли элементы диапазона\footnote{Range} range удовлетворяют предикату pred. 
+Можно явно не указывать предикат, если элемнты диапазона приводятся к булевому типу (true, false). Это позволяет легко проверить,
+все ли элементы диапазона принимают значение true. В худшем случае выполняет range.length проверок.
+\item [any] \hfill \\
+\begin{minted}{d}
+template any(alias pred = "a")
+bool any(Range)(Range range) 
+        if (isInputRange!Range && is(typeof(unaryFun!pred(range.front))));
+\end{minted}
+
+Проверяет, существует ли элемент диапазона range, который удовлетворяет предикату pred. 
+Можно явно не указывать предикат, если элемнты диапазона приводятся к булевому типу (true, false). Это позволяет легко проверить,
+существует ли элемент диапазона, который принимает значение true. В худшем случае выполняет range.length проверок.
+\item [balancedParens] \hfill \\
+\begin{minted}{d}
+bool balancedParens(Range, E)(Range r, E lPar, E rPar, size_t maxNestingLevel = size_t.max)
+        if (isInputRange!Range && is(typeof(r.front == lPar)));
+\end{minted}
+Проверяет, "баланс скобок" в диапазоне r, то есть равно ли количество "открывающих" 
+элементов lPar количеству "закрывающих" rPar. Параметр maxNestingLevel указывает максимально допущенный уровень вложенности
+скобок. maxNestingLevel = 0 говорит о том, что не допускаются вложенные скобки.
+
+\item [canFind] \hfill \\
+\begin{minted}{d}
+template canFind(alias pred = "a == b")
+\end{minted}
+Удобная функция, которая проверяет, успешно ли выполнится поиск.
+\begin{minted}{d}
+bool canFind(Range)(Range haystack) 
+        if (is(typeof(find!pred(haystack))));
+\end{minted}
+Возвращает true в том случае, когда для любого элемента v в диапазоне haystack выполняется предикат, иначе false. 
+В Худшем случае выполняет haystack.length проверок предиката.
+\begin{minted}{d}
+bool canFind(Range, Element)(Range haystack, Element needle) 
+        if (is(typeof(find!pred(haystack, needle))));
+\end{minted}
+Возвращает true тогда и только тогда, когда needle может быть найдена в haystack, иначе возвращает false.
+В худшем случае выполняет haystack.length проверок предиката.
+%По-хорошему нужно дописать описание 3-ей функции, но я её не понимаю
+
+\item [count] \hfill \\
+\begin{minted}{d}
+size_t count(alias pred = "a == b", Range, E)(Range haystack, E needle) 
+        if (isInputRange!Range && !isInfinite!Range && is(typeof(binaryFun!pred(haystack.front, needle)) : bool)); 
+\end{minted}
+Подсчитывает количество таких элементов v диапазона r, для которых pred(v, needle) == true. По умолчанию они сравниваются на равенство.
+В худшем случае выполняется haystack.length проверок предиката.
+\begin{minted}{d}
+size_t count(alias pred = "a == b", R1, R2)(R1 haystack, R2 needle) 
+        if (isForwardRange!R1 && !isInfinite!R1 && isForwardRange!R2 && is(typeof(binaryFun!pred(haystack.front, needle.front)) : bool)); 
+\end{minted}
+Подсчитывает, сколько раз в haystack встречается needle. Порождает исключение, если needle.empty, так как пустой диапазон встречается
+бесконечное число раз в любом диапазоне. Не рассматривается возможным наложение искомых элементов друг на друга. Например
+count ("aaa", "aa") равняется 1, а не 2.
+\begin{minted}{d}
+size_t count(alias pred = "true", R)(R haystack) 
+        if (isInputRange!R && !isInfinite!R && is(typeof(unaryFun!pred(haystack.front)) : bool));
+\end{minted}
+Подсчитывает количество элементов, для которых выполняется предикат. В худшем случае выполняет haystack.length проверок предиката.
+
+
+\end{description}
+\end{document}
